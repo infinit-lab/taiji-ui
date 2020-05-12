@@ -65,6 +65,7 @@ export default {
     }
   },
   created: function() {
+    console.log("login component created");
     this.remember = this.$store.getters.getRemember;
     if (this.remember) {
       this.username = this.$store.getters.getUsername;

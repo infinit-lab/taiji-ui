@@ -33,7 +33,7 @@ export default {
       console.log("logouted");
       this.isLogined = false;
       this.$store.commit("setToken", "");
-      //yolanda.disconnectNotifier();
+      yolanda.disconnectNotifier();
       this.$router.push("login");
     }
   },
@@ -50,6 +50,9 @@ export default {
     yolanda.registerNotifyCallback(data => {
       data = JSON.parse(data);
       if ("key" in data) {
+        if (data.key === define.KeyToken) {
+          console.log(data);
+        }
         yolanda.publish(data.key, data);
       }
     });

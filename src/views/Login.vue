@@ -1,12 +1,15 @@
 <template>
   <div class="login">
-    <h1 class="header">Puppy</h1>
+    <h1>
+      太极
+    </h1>
     <LoginComponent @logined="logined" />
   </div>
 </template>
 
 <script>
 import LoginComponent from "@/components/LoginComponent";
+//import yolanda from "yolanda-ui";
 
 export default {
   name: "Login",
@@ -20,9 +23,3 @@ export default {
   }
 };
 </script>
-
-<style scoped>
-.header {
-  color: #409eff;
-}
-</style>

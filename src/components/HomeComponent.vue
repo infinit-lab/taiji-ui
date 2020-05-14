@@ -39,6 +39,7 @@
 <script>
 import yolanda from "yolanda-ui";
 import echarts from "echarts";
+import define from "../define";
 
 export default {
   name: "HomeBoard",
@@ -50,51 +51,88 @@ export default {
       disable: 0,
 
       cpuStatus: null,
-      cpuInterval: 0,
 
       memStatus: null,
-      memInterval: 0,
-      memTotal: 0
+      memTotal: 0,
+
+      subscriber: null,
+      cpuSubscriber: null,
+      memSubscriber: null
     };
   },
   created: function() {
-    yolanda.sendHttpRequest(
-      {
-        method: "GET",
-        url: "/api/1/process/statistic"
-      },
-      response => {
-        if (yolanda.isResultTrue(response)) {
-          if ("data" in response.data) {
-            this.total = response.data.data.total;
-            this.running = response.data.data.running;
-            this.stopped = response.data.data.stopped;
-            this.disable = response.data.data.disable;
-          }
+    this.updateStatistic();
+    this.subscriber = yolanda.subscribe(define.KeyStatistic, (key, value) => {
+      if ("data" in value) {
+        this.total = value.data.total;
+        this.running = value.data.running;
+        this.stopped = value.data.stopped;
+        this.disable = value.data.disable;
+      }
+    });
+    this.cpuSubscriber = yolanda.subscribe(
+      define.KeyCpuUseRate,
+      (key, value) => {
+        if ("data" in value) {
+          let option = this.cpuStatus.getOption();
+          option.series[0].data.shift();
+          option.series[0].data.push(value.data);
+          this.cpuStatus.setOption(option);
         }
-      },
-      "获取进程统计失败"
+      }
+    );
+    this.memSubscriber = yolanda.subscribe(
+      define.KeyMemUseRate,
+      (key, value) => {
+        if ("data" in value) {
+          let option = this.memStatus.getOption();
+          option.series[0].data.shift();
+          option.series[0].data.push(value.data.rate);
+          this.memStatus.setOption(option);
+          this.memTotal = value.data.total / 1024 / 1024 / 1024;
+          this.memTotal = this.memTotal.toFixed(2);
+        }
+      }
     );
   },
   mounted: function() {
     this.initCpuStatus();
-    this.cpuInterval = setInterval(() => {
-      this.updateCpuStatus();
-    }, 1000);
     this.initMemStatus();
-    this.memInterval = setInterval(() => {
-      this.updateMemStatus();
-    }, 1000);
   },
   beforeDestroy: function() {
-    if (this.cpuInterval !== 0) {
-      clearInterval(this.cpuInterval);
+    if (this.subscriber !== null) {
+      yolanda.unsubscribe(define.KeyStatistic, this.subscriber);
+      this.subscriber = null;
     }
-    if (this.memInterval !== 0) {
-      clearInterval(this.memInterval);
+    if (this.cpuSubscriber !== null) {
+      yolanda.unsubscribe(define.KeyCpuUseRate, this.cpuSubscriber);
+      this.cpuSubscriber = null;
+    }
+    if (this.memSubscriber !== null) {
+      yolanda.unsubscribe(define.KeyMemUseRate, this.memSubscriber);
+      this.memSubscriber = null;
     }
   },
   methods: {
+    updateStatistic: function() {
+      yolanda.sendHttpRequest(
+        {
+          method: "GET",
+          url: "/api/1/process/statistic"
+        },
+        response => {
+          if (yolanda.isResultTrue(response)) {
+            if ("data" in response.data) {
+              this.total = response.data.data.total;
+              this.running = response.data.data.running;
+              this.stopped = response.data.data.stopped;
+              this.disable = response.data.data.disable;
+            }
+          }
+        },
+        "获取进程统计失败"
+      );
+    },
     initCpuStatus: function() {
       this.cpuStatus = echarts.init(document.getElementById("cpuStatus"));
       this.cpuStatus.setOption({
@@ -191,7 +229,8 @@ export default {
               this.memTotal = this.memTotal.toFixed(2);
             }
           }
-        }
+        },
+        "获取内存利用率失败"
       );
     }
   }

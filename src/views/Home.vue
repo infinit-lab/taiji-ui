@@ -103,6 +103,9 @@ export default {
   created: function() {
     this.$router.push("/home");
   },
+  beforeDestroy: function() {
+    this.changePasswordVisible = false;
+  },
   methods: {
     handleSelect: function(key) {
       switch (key) {

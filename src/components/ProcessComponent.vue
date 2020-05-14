@@ -21,7 +21,12 @@
           ></el-table-column>
           <el-table-column
             prop="status"
-            label="状态"
+            label="运行状态"
+            align="center"
+          ></el-table-column>
+          <el-table-column
+            prop="updateStatus"
+            label="升级状态"
             align="center"
           ></el-table-column>
           <el-table-column label="操作" align="center" fixed="right">
@@ -61,17 +66,30 @@
               >
                 启用
               </el-button>
+              <el-button type="text" @click="onUpdate(scope.$index)">
+                升级
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
       </el-col>
     </el-row>
+    <el-dialog title="升级" :visible.sync="updateVisible" width="300px">
+      <input type="file" id="updateFile" accept=".zip" />
+      <span slot="footer">
+        <el-button @click="updateVisible = false">取消</el-button>
+        <el-button type="primary" @click="onUpdateFile" :loading="isUpdating">
+          确定
+        </el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import yolanda from "yolanda-ui";
 import define from "../define";
+import { v4 } from "uuid";
 
 var status = {
   started: "运行",
@@ -86,7 +104,13 @@ export default {
       processList: [],
       updateTimeInterval: 0,
 
-      processSubscriber: null
+      processSubscriber: null,
+
+      updateVisible: false,
+      updateIndex: -1,
+      updateUuid: {},
+      isUpdating: false,
+      updateSubscriber: null
     };
   },
   created: function() {
@@ -97,6 +121,37 @@ export default {
         this.handleNotification(key, value);
       }
     );
+    this.updateSubscriber = yolanda.subscribe(
+      define.KeyUpdate,
+      (key, value) => {
+        if ("data" in value) {
+          let status = "";
+          switch (value.data.status) {
+            case define.UpdateUpdating:
+              status =
+                "升级中 " +
+                value.data.current.toString() +
+                "/" +
+                value.data.total.toString();
+              break;
+            case define.UpdateSuccess:
+              status = "升级成功";
+              break;
+            case define.UpdateFail:
+              status = "升级失败";
+              break;
+          }
+          let processId = this.updateUuid[value.id];
+          for (let i = 0; i < this.processList.length; i++) {
+            if (this.processList[i].id === processId) {
+              this.processList[i].updateStatus = status;
+              this.updateProcess(this.processList[i]);
+              break;
+            }
+          }
+        }
+      }
+    );
     this.initTable();
     this.updateTimeInterval = setInterval(() => {
       for (let i = 0; i < this.processList.length; i++) {
@@ -105,10 +160,15 @@ export default {
     }, 1000);
   },
   beforeDestroy: function() {
+    this.updateVisible = false;
     console.log("Process component before destroy");
-    if (this.processSubscriber) {
+    if (this.processSubscriber !== null) {
       yolanda.unsubscribe(define.KeyProcess, this.processSubscriber);
       this.processSubscriber = null;
+    }
+    if (this.updateSubscriber !== null) {
+      yolanda.unsubscribe(define.KeyUpdate, this.updateSubscriber);
+      this.updateSubscriber = null;
     }
     if (this.updateTimeInterval > 0) {
       clearInterval(this.updateTimeInterval);
@@ -127,6 +187,7 @@ export default {
             if ("data" in response.data) {
               this.processList = response.data.data;
               for (let i = 0; i < this.processList.length; i++) {
+                this.processList[i].updateStatus = "-";
                 this.updateStatus(this.processList[i]);
               }
             }
@@ -138,6 +199,7 @@ export default {
     updateProcess: function(process) {
       for (let i = 0; i < this.processList.length; i++) {
         if (this.processList[i].id == process.id) {
+          process.updateStatus = this.processList[i].updateStatus;
           this.processList.splice(i, 1, process);
           return;
         }
@@ -321,6 +383,54 @@ export default {
           "获取进程失败"
         );
       }
+    },
+    onUpdate: function(index) {
+      this.updateVisible = true;
+      this.updateIndex = index;
+    },
+    onUpdateFile: function() {
+      let file = document.getElementById("updateFile").files[0];
+      if (file === null) {
+        this.updateIndex = -1;
+        this.$message.error("打开文件失败");
+        return;
+      }
+      if (
+        this.updateIndex === -1 ||
+        this.updateIndex >= this.processList.length
+      ) {
+        this.updateIndex = -1;
+        this.$message.error("非法序号");
+        return;
+      }
+      let process = this.processList[this.updateIndex];
+      this.updateIndex = -1;
+      let updateUuid = v4();
+      let reader = new FileReader();
+      reader.onloadend = () => {
+        this.isUpdating = true;
+        yolanda.sendHttpRequest(
+          {
+            method: "PUT",
+            url: "/api/1/process/" + process.id + "/update-file/" + updateUuid,
+            data: reader.result,
+            headers: {
+              "Content-Type": file.type,
+              "Content-Size": file.size,
+              "File-Name": file.name
+            }
+          },
+          response => {
+            this.isUpdating = false;
+            if (yolanda.isResultTrue(response)) {
+              this.updateUuid[updateUuid] = process.id;
+              this.updateVisible = false;
+            }
+          },
+          "上传更新文件失败"
+        );
+      };
+      reader.readAsArrayBuffer(file);
     }
   }
 };

@@ -41,7 +41,10 @@ export default {
     console.log("created");
     this.subscriber = yolanda.subscribe(define.KeyToken, (key, value) => {
       if (key === define.KeyToken && "id" in value && "status" in value) {
-        if (value.status === define.StatusDeleted) {
+        if (
+          value.status === define.StatusDeleted &&
+          value.id === this.$store.state.token
+        ) {
           this.logouted();
         }
       }

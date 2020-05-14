@@ -6,10 +6,15 @@ var define = {
   KeyProcess: 5,
   KeyProcessStatus: 7,
   KeyStatistic: 8,
+  KeyUpdate: 9,
 
   StatusCreated: 1,
   StatusUpdated: 2,
-  StatusDeleted: 3
+  StatusDeleted: 3,
+
+  UpdateUpdating: 1,
+  UpdateSuccess: 2,
+  UpdateFail: 3
 };
 
 export default define;

@@ -64,6 +64,7 @@
 
 <script>
 import HomeComponent from "../components/HomeComponent";
+import ProcessComponent from "../components/ProcessComponent";
 import VueRouter from "vue-router";
 import yolanda from "yolanda-ui";
 import md5 from "js-md5";
@@ -73,6 +74,11 @@ const routes = [
     path: "/home",
     name: "HomeBoard",
     component: HomeComponent
+  },
+  {
+    path: "/process",
+    name: "Process",
+    component: ProcessComponent
   }
 ];
 

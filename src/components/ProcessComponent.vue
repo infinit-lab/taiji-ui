@@ -1,0 +1,327 @@
+<template>
+  <div>
+    <el-row>
+      <el-col :span="20" :offset="2">
+        <el-table :data="processList" stripe style="width: 100%">
+          <el-table-column type="index" align="center"></el-table-column>
+          <el-table-column
+            prop="name"
+            label="名称"
+            align="center"
+          ></el-table-column>
+          <el-table-column
+            prop="pid"
+            label="进程ID"
+            align="center"
+          ></el-table-column>
+          <el-table-column
+            prop="runningTime"
+            label="运行时间"
+            align="center"
+          ></el-table-column>
+          <el-table-column
+            prop="status"
+            label="状态"
+            align="center"
+          ></el-table-column>
+          <el-table-column label="操作" align="center" fixed="right">
+            <template slot-scope="scope">
+              <el-button
+                type="text"
+                v-show="isStartVisible(scope.$index)"
+                @click="onStart(scope.$index)"
+              >
+                启动
+              </el-button>
+              <el-button
+                type="text"
+                v-show="isRestartVisible(scope.$index)"
+                @click="onRestart(scope.$index)"
+              >
+                重启
+              </el-button>
+              <el-button
+                type="text"
+                v-show="isStopVisible(scope.$index)"
+                @click="onStop(scope.$index)"
+              >
+                停止
+              </el-button>
+              <el-button
+                type="text"
+                v-show="isDisableVisible(scope.$index)"
+                @click="onDisable(scope.$index)"
+              >
+                禁用
+              </el-button>
+              <el-button
+                type="text"
+                v-show="isEnableVisible(scope.$index)"
+                @click="onEnable(scope.$index)"
+              >
+                启用
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-col>
+    </el-row>
+  </div>
+</template>
+
+<script>
+import yolanda from "yolanda-ui";
+import define from "../define";
+
+var status = {
+  started: "运行",
+  stopped: "停止",
+  disable: "禁用"
+};
+
+export default {
+  name: "Process",
+  data() {
+    return {
+      processList: [],
+      updateTimeInterval: 0,
+
+      processSubscriber: null
+    };
+  },
+  created: function() {
+    console.log("Process component created");
+    this.processSubscriber = yolanda.subscribe(
+      define.KeyProcess,
+      (key, value) => {
+        this.handleNotification(key, value);
+      }
+    );
+    this.initTable();
+    this.updateTimeInterval = setInterval(() => {
+      for (let i = 0; i < this.processList.length; i++) {
+        this.updateRunningTime(this.processList[i]);
+      }
+    }, 1000);
+  },
+  beforeDestroy: function() {
+    console.log("Process component before destroy");
+    if (this.processSubscriber) {
+      yolanda.unsubscribe(define.KeyProcess, this.processSubscriber);
+      this.processSubscriber = null;
+    }
+    if (this.updateTimeInterval > 0) {
+      clearInterval(this.updateTimeInterval);
+      this.updateTimeInterval = 0;
+    }
+  },
+  methods: {
+    initTable: function() {
+      yolanda.sendHttpRequest(
+        {
+          method: "GET",
+          url: "/api/1/process"
+        },
+        response => {
+          if (yolanda.isResultTrue(response)) {
+            if ("data" in response.data) {
+              this.processList = response.data.data;
+              for (let i = 0; i < this.processList.length; i++) {
+                this.updateStatus(this.processList[i]);
+              }
+            }
+          }
+        },
+        "获取进程列表失败"
+      );
+    },
+    updateProcess: function(process) {
+      for (let i = 0; i < this.processList.length; i++) {
+        if (this.processList[i].id == process.id) {
+          this.processList.splice(i, 1, process);
+          return;
+        }
+      }
+    },
+    updateStatus: function(process) {
+      if (process.enable === true) {
+        yolanda.sendHttpRequest(
+          {
+            method: "GET",
+            url: "/api/1/process/" + process.id + "/status/started"
+          },
+          response => {
+            if (yolanda.isResultTrue(response)) {
+              if ("data" in response.data) {
+                if (parseInt(response.data.data.value) === 1) {
+                  process.status = status.started;
+                  this.updateRunningTime(process);
+                  return;
+                }
+              }
+            }
+            process.status = status.stopped;
+            this.updateRunningTime(process);
+          }
+        );
+      } else {
+        process.status = status.disable;
+        this.updateRunningTime(process);
+      }
+    },
+    updateRunningTime: function(process) {
+      if (process.status !== status.started) {
+        process.runningTime = "-";
+        this.updateProcess(process);
+        return;
+      }
+      const startTime = new Date(process.startTime.replace(/-/g, "/"));
+      const now = new Date();
+      let runningTime = now - startTime;
+      const millisecond = runningTime % 1000;
+      let second = 0;
+      runningTime = (runningTime - millisecond) / 1000;
+      if (runningTime > 0) {
+        second = runningTime % 60;
+      }
+      let minute = 0;
+      runningTime = (runningTime - second) / 60;
+      if (runningTime > 0) {
+        minute = runningTime % 60;
+      }
+      let hour = 0;
+      runningTime = (runningTime - minute) / 60;
+      if (runningTime > 0) {
+        hour = runningTime % 24;
+      }
+      let day = 0;
+      day = (runningTime - hour) / 24;
+      if (day < 0) {
+        day = 0;
+      }
+
+      process.runningTime = "";
+      if (day > 0) {
+        process.runningTime += day.toString() + "天 ";
+      }
+      if (hour > 0) {
+        process.runningTime += hour.toString() + "小时 ";
+      }
+      if (minute > 0) {
+        process.runningTime += minute.toString() + "分钟 ";
+      }
+      if (second > 0) {
+        process.runningTime += second.toString() + "秒";
+      }
+      if (process.runningTime === "") {
+        process.runningTime = "-";
+      }
+      this.updateProcess(process);
+    },
+    isStartVisible: function(index) {
+      if (index >= this.processList.length) {
+        return false;
+      }
+      if (this.processList[index].enable === false) {
+        return false;
+      }
+      if (this.processList[index].status === status.stopped) {
+        return true;
+      }
+      return false;
+    },
+    isRestartVisible: function(index) {
+      if (index >= this.processList.length) {
+        return false;
+      }
+      if (this.processList[index].enable === false) {
+        return false;
+      }
+      if (this.processList[index].status === status.started) {
+        return true;
+      }
+      return false;
+    },
+    isStopVisible: function(index) {
+      if (index >= this.processList.length) {
+        return false;
+      }
+      if (this.processList[index].enable === false) {
+        return false;
+      }
+      if (this.processList[index].status === status.started) {
+        return true;
+      }
+      return false;
+    },
+    isDisableVisible: function(index) {
+      if (index >= this.processList.length) {
+        return false;
+      }
+      if (this.processList[index].enable === true) {
+        return true;
+      }
+      return false;
+    },
+    isEnableVisible: function(index) {
+      if (index >= this.processList.length) {
+        return false;
+      }
+      if (this.processList[index].enable === false) {
+        return true;
+      }
+      return false;
+    },
+    operate: function(index, operation, error) {
+      if (index >= this.processList.length) {
+        return;
+      }
+      const process = this.processList[index];
+      yolanda.sendHttpRequest(
+        {
+          method: "PUT",
+          url: "/api/1/process/" + process.id + "/operation",
+          data: {
+            operation: operation
+          }
+        },
+        null,
+        error
+      );
+    },
+    onStart: function(index) {
+      this.operate(index, "start", "启动进程失败");
+    },
+    onStop: function(index) {
+      this.operate(index, "stop", "停止进程失败");
+    },
+    onRestart: function(index) {
+      this.operate(index, "restart", "重启进程失败");
+    },
+    onDisable: function(index) {
+      this.operate(index, "disable", "禁用进程失败");
+    },
+    onEnable: function(index) {
+      this.operate(index, "enable", "启用进程失败");
+    },
+    handleNotification: function(key, value) {
+      if ("id" in value) {
+        yolanda.sendHttpRequest(
+          {
+            method: "GET",
+            url: "/api/1/process/" + value.id
+          },
+          response => {
+            if (yolanda.isResultTrue(response)) {
+              if ("data" in response.data) {
+                this.updateStatus(response.data.data);
+              }
+            }
+          },
+          "获取进程失败"
+        );
+      }
+    }
+  }
+};
+</script>

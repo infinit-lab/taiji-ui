@@ -69,6 +69,13 @@
               <el-button type="text" @click="onUpdate(scope.$index)">
                 升级
               </el-button>
+              <el-button
+                type="text"
+                @click="onConfig(scope.$index)"
+                :loading="isLoadingConfig"
+              >
+                配置
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -83,6 +90,24 @@
         </el-button>
       </span>
     </el-dialog>
+    <el-dialog
+      title="配置"
+      :visible.sync="configVisible"
+      width="30%"
+      height="50%"
+    >
+      <el-input
+        v-model="configContent"
+        type="textarea"
+        :autosize="{ minRows: 10, maxRows: 15 }"
+      ></el-input>
+      <span slot="footer">
+        <el-button @click="configVisible = false">取消</el-button>
+        <el-button type="primary" @click="onConfigFile" :loading="isConfiging">
+          确定
+        </el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -90,6 +115,7 @@
 import yolanda from "yolanda-ui";
 import define from "../define";
 import { v4 } from "uuid";
+import { Base64 } from "js-base64";
 
 var status = {
   started: "运行",
@@ -110,7 +136,13 @@ export default {
       updateIndex: -1,
       updateUuid: {},
       isUpdating: false,
-      updateSubscriber: null
+      updateSubscriber: null,
+
+      configVisible: false,
+      configIndex: -1,
+      isLoadingConfig: false,
+      isConfiging: false,
+      configContent: ""
     };
   },
   created: function() {
@@ -161,6 +193,7 @@ export default {
   },
   beforeDestroy: function() {
     this.updateVisible = false;
+    this.configVisible = false;
     console.log("Process component before destroy");
     if (this.processSubscriber !== null) {
       yolanda.unsubscribe(define.KeyProcess, this.processSubscriber);
@@ -385,6 +418,7 @@ export default {
       }
     },
     onUpdate: function(index) {
+      document.getElementById("updateFile").value = "";
       this.updateVisible = true;
       this.updateIndex = index;
     },
@@ -431,6 +465,51 @@ export default {
         );
       };
       reader.readAsArrayBuffer(file);
+    },
+    onConfig: function(index) {
+      if (index >= this.processList.length) {
+        return;
+      }
+      let process = this.processList[index];
+      this.isLoadingConfig = true;
+      yolanda.sendHttpRequest(
+        {
+          method: "GET",
+          url: "/api/1/process/" + process.id + "/config-file"
+        },
+        response => {
+          this.isLoadingConfig = false;
+          if (yolanda.isResultTrue(response)) {
+            if ("data" in response.data) {
+              this.configContent = Base64.decode(response.data.data);
+              this.configIndex = process.id;
+              this.configVisible = true;
+            }
+          }
+        },
+        "获取配置文件失败"
+      );
+    },
+    onConfigFile: function() {
+      this.isConfiging = true;
+      yolanda.sendHttpRequest(
+        {
+          method: "PUT",
+          url: "/api/1/process/" + this.configIndex + "/config-file",
+          data: {
+            content: Base64.encode(this.configContent)
+          }
+        },
+        response => {
+          this.isConfiging = false;
+          if (yolanda.isResultTrue(response)) {
+            this.configContent = "";
+            this.configVisible = false;
+            this.configIndex = -1;
+          }
+        },
+        "更新配置文件失败"
+      );
     }
   }
 };

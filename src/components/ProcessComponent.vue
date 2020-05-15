@@ -1,7 +1,7 @@
 <template>
   <div>
     <el-row>
-      <el-col :span="20" :offset="2">
+      <el-col :span="22" :offset="1">
         <el-table :data="processList" stripe style="width: 100%">
           <el-table-column type="index" align="center"></el-table-column>
           <el-table-column
@@ -29,7 +29,12 @@
             label="升级状态"
             align="center"
           ></el-table-column>
-          <el-table-column label="操作" align="center" fixed="right">
+          <el-table-column
+            label="操作"
+            align="center"
+            fixed="right"
+            min-width="200"
+          >
             <template slot-scope="scope">
               <el-button
                 type="text"
@@ -75,6 +80,13 @@
                 :loading="isLoadingConfig"
               >
                 配置
+              </el-button>
+              <el-button
+                type="text"
+                @click="onDownloadLog(scope.$index)"
+                :loading="isLoadingLog"
+              >
+                下载日志
               </el-button>
             </template>
           </el-table-column>
@@ -142,7 +154,9 @@ export default {
       configIndex: -1,
       isLoadingConfig: false,
       isConfiging: false,
-      configContent: ""
+      configContent: "",
+
+      isLoadingLog: false
     };
   },
   created: function() {
@@ -509,6 +523,35 @@ export default {
           }
         },
         "更新配置文件失败"
+      );
+    },
+    onDownloadLog: function(index) {
+      if (index >= this.processList.length) {
+        return;
+      }
+      let process = this.processList[index];
+      this.isLoadingLog = true;
+      yolanda.sendHttpRequest(
+        {
+          method: "GET",
+          url: "/api/1/process/" + process.id + "/log-file"
+        },
+        response => {
+          if (typeof response === "undefined") {
+            return;
+          }
+          this.isLoadingLog = false;
+          if (response.status === 200) {
+            let a = document.createElement("a");
+            a.download = response.headers["file-name"];
+            a.style.display = "none";
+            a.href = URL.createObjectURL(new Blob([response.data]));
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }
+        },
+        "下载日志文件失败"
       );
     }
   }

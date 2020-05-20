@@ -16,6 +16,7 @@
             <template slot="title">配置</template>
             <el-menu-item index="changePassword">修改密码</el-menu-item>
             <el-menu-item index="logout">注销</el-menu-item>
+            <el-menu-item index="about">关于</el-menu-item>
           </el-submenu>
         </el-menu>
       </el-col>
@@ -138,7 +139,22 @@ export default {
               "注销失败"
             );
           });
-          console.log(this.activeIndex);
+          break;
+        case "about":
+          yolanda.sendHttpRequest(
+            {
+              method: "GET",
+              url: "/api/1/version"
+            },
+            response => {
+              if (yolanda.isResultTrue(response)) {
+                if ("data" in response.data) {
+                  console.log(response.data.data);
+                }
+              }
+            },
+            "获取版本失败"
+          );
           break;
         default:
           return;

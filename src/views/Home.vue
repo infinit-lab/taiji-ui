@@ -150,16 +150,18 @@ export default {
               if (yolanda.isResultTrue(response)) {
                 if ("data" in response.data) {
                   this.$alert(
-                    "版本号：" +
+                    "<p>版本号：" +
                       response.data.data.version +
-                      "Build(" +
+                      " Build(" +
                       response.data.data.commitId +
-                      ")\r" +
-                      "构建时间：" +
-                      response.data.data.buildTime,
+                      ")</p>" +
+                      "<p>构建时间：" +
+                      response.data.data.buildTime +
+                      "</p>",
                     "关于",
                     {
-                      confirmButtonText: "确定"
+                      confirmButtonText: "确定",
+                      dangerouslyUseHTMLString: true
                     }
                   );
                 }

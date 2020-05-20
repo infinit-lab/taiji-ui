@@ -432,7 +432,10 @@ export default {
       }
     },
     onUpdate: function(index) {
-      document.getElementById("updateFile").value = "";
+      let e = document.getElementById("updateFile");
+      if (e !== null) {
+        e.value = "";
+      }
       this.updateVisible = true;
       this.updateIndex = index;
     },

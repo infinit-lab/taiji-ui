@@ -151,12 +151,12 @@ export default {
                 if ("data" in response.data) {
                   this.$alert(
                     "版本号：" +
-                      response.data.version +
+                      response.data.data.version +
                       "Build(" +
-                      response.data.commitId +
-                      ")\n" +
+                      response.data.data.commitId +
+                      ")\r" +
                       "构建时间：" +
-                      response.data.buildTime,
+                      response.data.data.buildTime,
                     "关于",
                     {
                       confirmButtonText: "确定"

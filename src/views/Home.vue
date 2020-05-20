@@ -149,7 +149,19 @@ export default {
             response => {
               if (yolanda.isResultTrue(response)) {
                 if ("data" in response.data) {
-                  console.log(response.data.data);
+                  this.$alert(
+                    "版本号：" +
+                      response.data.version +
+                      "Build(" +
+                      response.data.commitId +
+                      ")\n" +
+                      "构建时间：" +
+                      response.data.buildTime,
+                    "关于",
+                    {
+                      confirmButtonText: "确定"
+                    }
+                  );
                 }
               }
             },

@@ -28,7 +28,7 @@
       <el-col :span="22" :offset="1">
         <el-table
           :data="operateLogList"
-          height="750"
+          :height="tableHeight"
           ref="table"
           v-loading="isLoading"
         >
@@ -81,7 +81,8 @@ export default {
       isAll: false,
       onceRows: 20,
       times: 0,
-      isLoading: false
+      isLoading: false,
+      tableHeight: window.innerHeight - 200
     };
   },
   methods: {

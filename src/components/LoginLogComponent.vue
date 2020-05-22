@@ -18,7 +18,7 @@
       <el-col :span="22" :offset="1">
         <el-table
           :data="loginLogList"
-          height="750"
+          :height="tableHeight"
           ref="table"
           v-loading="isLoading"
         >
@@ -63,7 +63,8 @@ export default {
       tableDom: null,
       isAll: false,
       times: 0,
-      onceRows: 20
+      onceRows: 20,
+      tableHeight: window.innerHeight - 200
     };
   },
   methods: {

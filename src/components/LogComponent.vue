@@ -2,12 +2,12 @@
   <div>
     <el-container>
       <el-aside>
-        <el-menu :default-active="selected" :active="selected" router>
+        <el-menu :default-active="selected" :active="selected" router id="menu">
           <el-menu-item index="/log/operate">操作日志</el-menu-item>
           <el-menu-item index="/log/login">登录日志</el-menu-item>
         </el-menu>
       </el-aside>
-      <el-main style="height: 100%">
+      <el-main>
         <router-view></router-view>
       </el-main>
     </el-container>
@@ -50,3 +50,9 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+#menu {
+  height: 100%;
+}
+</style>

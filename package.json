@@ -11,6 +11,7 @@
     "axios": "^0.19.2",
     "core-js": "^3.6.4",
     "echarts": "^4.7.0",
+    "el-table-infinite-scroll": "^1.0.10",
     "element-ui": "^2.13.1",
     "js-base64": "^2.5.2",
     "js-md5": "^0.7.3",

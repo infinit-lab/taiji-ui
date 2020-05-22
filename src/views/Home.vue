@@ -8,6 +8,7 @@
         <el-menu mode="horizontal" :default-active="activeIndex" router>
           <el-menu-item index="/home">首页</el-menu-item>
           <el-menu-item index="/process">进程</el-menu-item>
+          <el-menu-item index="/log">日志</el-menu-item>
         </el-menu>
       </el-col>
       <el-col :span="2">
@@ -66,6 +67,7 @@
 <script>
 import HomeComponent from "../components/HomeComponent";
 import ProcessComponent from "../components/ProcessComponent";
+import LogComponent from "../components/LogComponent";
 import VueRouter from "vue-router";
 import yolanda from "yolanda-ui";
 import md5 from "js-md5";
@@ -80,6 +82,11 @@ const routes = [
     path: "/process",
     name: "Process",
     component: ProcessComponent
+  },
+  {
+    path: "/log",
+    name: "Log",
+    component: LogComponent
   }
 ];
 

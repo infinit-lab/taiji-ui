@@ -231,7 +231,7 @@ export default {
         },
         response => {
           if (yolanda.isResultTrue(response)) {
-            if ("data" in response.data) {
+            if ("data" in response.data && response.data.data !== null) {
               this.processList = response.data.data;
               for (let i = 0; i < this.processList.length; i++) {
                 this.processList[i].updateStatus = "-";

@@ -14,7 +14,16 @@ var define = {
 
   UpdateUpdating: 1,
   UpdateSuccess: 2,
-  UpdateFail: 3
+  UpdateFail: 3,
+
+  OperateStart: "start",
+  OperateStop: "stop",
+  OperateRestart: "restart",
+  OperateEnable: "enable",
+  OperateDisable: "disable",
+  OperateConfig: "config",
+  OperateUpdate: "update",
+  OperateDownloadLog: "download_log"
 };
 
 export default define;

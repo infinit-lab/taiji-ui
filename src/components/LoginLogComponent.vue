@@ -21,6 +21,7 @@
           :height="tableHeight"
           ref="table"
           v-loading="isLoading"
+          stripe
         >
           <el-table-column type="index" align="center"></el-table-column>
           <el-table-column

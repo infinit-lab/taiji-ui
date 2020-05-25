@@ -1,8 +1,21 @@
 <template>
   <div>
+    <div id="buttonGroup">
+      <el-button type="primary" @click="onStartAll">全部启动</el-button>
+      <el-button type="primary" @click="onStopAll">全部停止</el-button>
+      <el-button type="primary" @click="onRestartAll">全部重启</el-button>
+      <el-button type="primary" @click="onEnableAll">全部启用</el-button>
+      <el-button type="primary" @click="onDisableAll">全部禁用</el-button>
+      <el-button type="primary" @click="onBatchUpdate"> 批量升级</el-button>
+    </div>
     <el-row>
       <el-col :span="22" :offset="1">
-        <el-table :data="processList" stripe style="width: 100%">
+        <el-table
+          :data="processList"
+          stripe
+          style="width: 100%"
+          :height="tableHeight"
+        >
           <el-table-column type="index" align="center"></el-table-column>
           <el-table-column
             prop="name"
@@ -103,6 +116,23 @@
       </span>
     </el-dialog>
     <el-dialog
+      title="批量升级"
+      :visible.sync="batchUpdateVisible"
+      width="300px"
+    >
+      <input type="file" id="batchUpdateFile" accept=".zip" />
+      <span slot="footer">
+        <el-button @click="batchUpdateVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          @click="onBatchUpdateFile"
+          :loading="isUpdating"
+        >
+          确定
+        </el-button>
+      </span>
+    </el-dialog>
+    <el-dialog
       title="配置"
       :visible.sync="configVisible"
       width="30%"
@@ -126,7 +156,6 @@
 <script>
 import yolanda from "yolanda-ui";
 import define from "../define";
-import { v4 } from "uuid";
 import { Base64 } from "js-base64";
 
 var status = {
@@ -146,7 +175,6 @@ export default {
 
       updateVisible: false,
       updateIndex: -1,
-      updateUuid: {},
       isUpdating: false,
       updateSubscriber: null,
 
@@ -156,7 +184,10 @@ export default {
       isConfiging: false,
       configContent: "",
 
-      isLoadingLog: false
+      isLoadingLog: false,
+      tableHeight: window.innerHeight - 200,
+
+      batchUpdateVisible: false
     };
   },
   created: function() {
@@ -187,7 +218,7 @@ export default {
               status = "升级失败";
               break;
           }
-          let processId = this.updateUuid[value.id];
+          let processId = parseInt(value.id);
           for (let i = 0; i < this.processList.length; i++) {
             if (this.processList[i].id === processId) {
               this.processList[i].updateStatus = status;
@@ -456,14 +487,13 @@ export default {
       }
       let process = this.processList[this.updateIndex];
       this.updateIndex = -1;
-      let updateUuid = v4();
       let reader = new FileReader();
       reader.onloadend = () => {
         this.isUpdating = true;
         yolanda.sendHttpRequest(
           {
             method: "PUT",
-            url: "/api/1/process/" + process.id + "/update-file/" + updateUuid,
+            url: "/api/1/process/" + process.id + "/update-file",
             data: reader.result,
             headers: {
               "Content-Type": file.type,
@@ -474,7 +504,6 @@ export default {
           response => {
             this.isUpdating = false;
             if (yolanda.isResultTrue(response)) {
-              this.updateUuid[updateUuid] = process.id;
               this.updateVisible = false;
             }
           },
@@ -556,7 +585,90 @@ export default {
         },
         "下载日志文件失败"
       );
+    },
+    onStartAll: function() {
+      for (let i = 0; i < this.processList.length; i++) {
+        if (this.isStartVisible(i)) {
+          this.onStart(i);
+        }
+      }
+    },
+    onStopAll: function() {
+      for (let i = 0; i < this.processList.length; i++) {
+        if (this.isStopVisible(i)) {
+          this.onStop(i);
+        }
+      }
+    },
+    onRestartAll: function() {
+      for (let i = 0; i < this.processList.length; i++) {
+        if (this.isRestartVisible(i)) {
+          this.onRestart(i);
+        }
+      }
+    },
+    onEnableAll: function() {
+      for (let i = 0; i < this.processList.length; i++) {
+        if (this.isEnableVisible(i)) {
+          this.onEnable(i);
+        }
+      }
+    },
+    onDisableAll: function() {
+      for (let i = 0; i < this.processList.length; i++) {
+        if (this.isDisableVisible(i)) {
+          this.onDisable(i);
+        }
+      }
+    },
+    onBatchUpdate: function() {
+      let e = document.getElementById("batchUpdateFile");
+      if (e !== null) {
+        e.value = "";
+      }
+      this.batchUpdateVisible = true;
+    },
+    onBatchUpdateFile: function() {
+      let file = document.getElementById("batchUpdateFile").files[0];
+      if (file === null) {
+        this.$message.error("打开文件失败");
+        return;
+      }
+      let reader = new FileReader();
+      reader.onloadend = () => {
+        this.isUpdating = true;
+        yolanda.sendHttpRequest(
+          {
+            method: "PUT",
+            url: "/api/1/update-file",
+            data: reader.result,
+            headers: {
+              "Content-Type": file.type,
+              "Content-Size": file.size,
+              "File-Name": file.name
+            }
+          },
+          response => {
+            this.isUpdating = false;
+            if (yolanda.isResultTrue(response)) {
+              this.batchUpdateVisible = false;
+            }
+          },
+          "上传批量更新文件失败"
+        );
+      };
+      reader.readAsArrayBuffer(file);
     }
   }
 };
 </script>
+
+<style scoped>
+#buttonGroup {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  margin-left: 50px;
+  margin-bottom: 20px;
+}
+</style>

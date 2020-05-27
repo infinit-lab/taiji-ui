@@ -50,7 +50,7 @@
             prop="operate"
           ></el-table-column>
           <el-table-column
-            label="进程名"
+            label="资源名"
             align="center"
             prop="processName"
           ></el-table-column>
@@ -191,6 +191,9 @@ export default {
           break;
         case define.OperateDownloadLog:
           log.operate = "下载日志";
+          break;
+        case define.OperateConfigNet:
+          log.operate = "配置网卡";
           break;
         default:
           break;

@@ -178,6 +178,7 @@ export default {
   display: flex;
   flex-direction: row;
   justify-content: flex-start;
+  margin-bottom: 10px;
 }
 #picker {
   margin: 0 10px;

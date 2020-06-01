@@ -18,6 +18,7 @@
             <el-menu-item index="configNet">网卡配置</el-menu-item>
             <el-menu-item index="changePassword">修改密码</el-menu-item>
             <el-menu-item index="logout">注销</el-menu-item>
+            <el-menu-item index="license">证书</el-menu-item>
             <el-menu-item index="about">关于</el-menu-item>
           </el-submenu>
         </el-menu>
@@ -104,6 +105,38 @@
         </el-button>
       </span>
     </el-dialog>
+    <el-dialog title="证书" :visible.sync="licenseVisible" width="30%">
+      <div id="license" v-show="!isImporting">
+        <div id="fingerprint">
+          <div>机器指纹：</div>
+          <div id="fingerprintContent">{{ fingerprint }}</div>
+          <el-button
+            type="text"
+            id="fingerprintCopy"
+            @click="onCopyFingerprint"
+          >
+            复制
+          </el-button>
+        </div>
+        <div>授权状态：{{ licenseStatus }}</div>
+        <div id="validDuration">有效时间：{{ licenseDuration }}</div>
+      </div>
+      <div v-show="isImporting">
+        <input type="file" id="licenseFile" accept=".txt" />
+      </div>
+      <span slot="footer">
+        <el-button @click="onImportLicense">{{
+          importButtonContent
+        }}</el-button>
+        <el-button
+          @click="onConfirmImport"
+          type="primary"
+          :loading="isImportingFile"
+        >
+          确定
+        </el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -114,6 +147,7 @@ import LogComponent from "../components/LogComponent";
 import VueRouter from "vue-router";
 import yolanda from "yolanda-ui";
 import md5 from "js-md5";
+import define from "../define";
 
 const routes = [
   {
@@ -156,7 +190,15 @@ export default {
       mac: "",
       ip: "",
       mask: "",
-      gateway: ""
+      gateway: "",
+
+      licenseVisible: false,
+      fingerprint: "",
+      licenseStatus: "",
+      licenseDatetime: "",
+      licenseDuration: "",
+      isImporting: false,
+      isImportingFile: false
     };
   },
   router,
@@ -166,8 +208,60 @@ export default {
   beforeDestroy: function() {
     this.changePasswordVisible = false;
     this.configNetVisible = false;
+    this.licenseVisible = false;
+  },
+  computed: {
+    importButtonContent: {
+      get() {
+        if (this.isImporting) {
+          return "返回";
+        } else {
+          return "导入证书";
+        }
+      },
+      set() {}
+    }
   },
   methods: {
+    getDuration: function(duration) {
+      let second = 0;
+      if (duration > 0) {
+        second = duration % 60;
+      }
+      let minute = 0;
+      duration = (duration - second) / 60;
+      if (duration > 0) {
+        minute = duration % 60;
+      }
+      let hour = 0;
+      duration = (duration - minute) / 60;
+      if (duration > 0) {
+        hour = duration % 24;
+      }
+      let day = 0;
+      day = (duration - hour) / 24;
+      if (day < 0) {
+        day = 0;
+      }
+
+      let durationStr = "";
+      if (day > 0) {
+        durationStr += day.toString() + "天 ";
+      }
+      if (hour > 0) {
+        durationStr += hour.toString() + "小时 ";
+      }
+      if (minute > 0) {
+        durationStr += minute.toString() + "分钟 ";
+      }
+      if (second > 0) {
+        durationStr += second.toString() + "秒";
+      }
+      if (process.runningTime === "") {
+        durationStr = "-";
+      }
+      return durationStr;
+    },
     handleSelect: function(key) {
       switch (key) {
         case "configNet":
@@ -226,6 +320,48 @@ export default {
               "注销失败"
             );
           });
+          break;
+        case "license":
+          this.isImporting = false;
+          this.importButtonContent = "导入证书";
+          yolanda.sendHttpRequest(
+            {
+              method: "GET",
+              url: "/api/1/license"
+            },
+            response => {
+              if (yolanda.isResultTrue(response)) {
+                if ("data" in response.data) {
+                  let data = response.data.data;
+                  this.fingerprint = data.fingerprint;
+                  this.licenseDatetime = "-";
+                  this.licenseDuration = "-";
+                  switch (data.status) {
+                    case define.LicenseUnauthorized:
+                      this.licenseStatus = "未授权";
+                      break;
+                    case define.LicenseAuthorized:
+                      this.licenseStatus = "已授权";
+                      if (data.isForever) {
+                        this.licenseDatetime = "永久";
+                        this.licenseDuration = "永久";
+                      } else {
+                        this.licenseDatetime = data.validDatetime;
+                        this.licenseDuration = this.getDuration(
+                          data.validDuration
+                        );
+                      }
+                      break;
+                    case define.LicenseImporting:
+                      this.licenseStatus = "正在导入证书";
+                      break;
+                  }
+                  this.licenseVisible = true;
+                }
+              }
+            },
+            "获取证书失败"
+          );
           break;
         case "about":
           yolanda.sendHttpRequest(
@@ -381,6 +517,70 @@ export default {
       if (isFind === false) {
         this.configNetVisible = false;
       }
+    },
+    onCopyFingerprint: function() {
+      let textarea = document.createElement("textarea");
+      let currentFocus = document.activeElement;
+      document.body.appendChild(textarea);
+      textarea.value = this.fingerprint;
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand("copy");
+      } catch (err) {
+        this.$message.error("复制失败");
+      }
+      this.$message({
+        message: "复制成功",
+        type: "success"
+      });
+      document.body.removeChild(textarea);
+      currentFocus.focus();
+    },
+    onImportLicense: function() {
+      let e = document.getElementById("licenseFile");
+      if (e !== null) {
+        e.value = "";
+      }
+      this.isImporting = !this.isImporting;
+    },
+    onConfirmImport: function() {
+      if (this.isImporting) {
+        let file = document.getElementById("licenseFile").files[0];
+        if (file == null) {
+          this.$message.error("打开文件失败");
+          return;
+        }
+        let reader = new FileReader();
+        reader.onload = () => {
+          this.isImportingFile = true;
+          yolanda.sendHttpRequest(
+            {
+              method: "PUT",
+              url: "/api/1/license",
+              data: reader.result,
+              headers: {
+                "Content-Type": file.type,
+                "Content-Size": file.size,
+                "File-Name": file.name
+              }
+            },
+            response => {
+              this.isImportingFile = false;
+              if (yolanda.isResultTrue(response)) {
+                this.licenseVisible = false;
+              }
+            },
+            "导入证书失败"
+          );
+        };
+        reader.onerror = () => {
+          this.$message.error("读取文件失败");
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        this.licenseVisible = false;
+      }
     }
   }
 };
@@ -408,5 +608,23 @@ export default {
   grid-column-end: 3;
   word-wrap: wrap;
   word-break: break-word;
+}
+#license {
+  text-align: left;
+  padding-left: 20px;
+}
+#fingerprint {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+#fingerprintCopy {
+  margin-left: 10px;
+}
+#validDuration {
+  margin-top: 10px;
+}
+#licenseFile {
+  width: 200px;
 }
 </style>

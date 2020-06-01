@@ -278,6 +278,9 @@ export default {
       for (let i = 0; i < this.processList.length; i++) {
         if (this.processList[i].id == process.id) {
           process.updateStatus = this.processList[i].updateStatus;
+          if (process.pid === 0) {
+            process.pid = "-";
+          }
           this.processList.splice(i, 1, process);
           return;
         }

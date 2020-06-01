@@ -24,7 +24,11 @@ var define = {
   OperateConfig: "config",
   OperateUpdate: "update",
   OperateDownloadLog: "download_log",
-  OperateConfigNet: "config_net"
+  OperateConfigNet: "config_net",
+
+  LicenseUnauthorized: 0,
+  LicenseAuthorized: 1,
+  LicenseImporting: 2
 };
 
 export default define;
